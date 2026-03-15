@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1773558696042,
+      "tag": "0000_condemned_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1773561880377,
+      "tag": "0002_mighty_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1773592017429,
+      "tag": "0002_foamy_bruce_banner",
+      "breakpoints": true
+    }
+  ]
+}

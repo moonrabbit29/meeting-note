@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<title>Laporan Meeting</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  margin:40px;
+  color:#333;
+}
+
+.header{
+  text-align:center;
+  margin-bottom:30px;
+}
+
+.header h1{
+  margin:0;
+  font-size:24px;
+}
+
+.section{
+  margin-top:30px;
+}
+
+.label{
+  font-weight:bold;
+  width:180px;
+}
+
+.row{
+  display:flex;
+  margin-bottom:8px;
+}
+
+.value{
+  flex:1;
+}
+
+.box{
+  border:1px solid #ddd;
+  padding:15px;
+  border-radius:6px;
+}
+
+.description{
+  white-space:pre-line;
+}
+
+.image-container{
+  margin-top:15px;
+}
+
+.image-container img{
+  width:300px;
+  margin-right:10px;
+  margin-bottom:10px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.footer{
+  margin-top:40px;
+  font-size:12px;
+  color:#777;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+<h1>LAPORAN MEETING</h1>
+</div>
+
+<div class="section box">
+
+<div class="row">
+<div class="label">Nama Pegawai</div>
+<div class="value">{{employee_name}}</div>
+</div>
+
+<div class="row">
+<div class="label">Nomor Pegawai</div>
+<div class="value">{{employee_id}}</div>
+</div>
+
+<div class="row">
+<div class="label">Tanggal Meeting</div>
+<div class="value">{{meeting_date}}</div>
+</div>
+
+<div class="row">
+<div class="label">Judul Meeting</div>
+<div class="value">{{meeting_title}}</div>
+</div>
+
+<div class="row">
+<div class="label">Status Meeting</div>
+<div class="value">{{meeting_status}}</div>
+</div>
+
+</div>
+
+<div class="section">
+
+<h3>Deskripsi Meeting</h3>
+
+<div class="box description">
+{{description}}
+</div>
+
+</div>
+
+<div class="section">
+
+<h3>Dokumentasi Meeting</h3>
+
+<div class="image-container">
+{{photos}}
+</div>
+
+</div>
+
+<div class="footer">
+Generated automatically by Meeting Report System
+</div>
+
+</body>
+</html>

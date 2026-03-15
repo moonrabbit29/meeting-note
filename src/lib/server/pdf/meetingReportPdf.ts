@@ -1,0 +1,132 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, resolve } from 'node:path';
+
+import type { FormSubmissionRecord } from '$lib/server/form-submissions';
+import { updateFormSubmissionPdfLink } from '$lib/server/repositories/form-submissions';
+
+import { generatePdf } from './generatedPdf';
+
+const generatedPdfDirectory = resolve(process.cwd(), 'static', 'generated-pdfs', 'meeting-reports');
+
+let pdfDirectoryPromise: Promise<void> | undefined;
+
+function escapeHtml(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
+}
+
+function readField(fields: Record<string, string | string[]>, key: string): string {
+	const value = fields[key];
+
+	if (Array.isArray(value)) {
+		return value.join(', ');
+	}
+
+	return value ?? '';
+}
+
+function formatDisplayDate(value: string): string {
+	if (!value) {
+		return '-';
+	}
+
+	const date = new Date(`${value}T00:00:00`);
+
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+
+	return new Intl.DateTimeFormat('id-ID', {
+		day: '2-digit',
+		month: 'long',
+		year: 'numeric'
+	}).format(date);
+}
+
+async function ensurePdfDirectory(): Promise<void> {
+	if (!pdfDirectoryPromise) {
+		pdfDirectoryPromise = mkdir(generatedPdfDirectory, { recursive: true }).then(() => {});
+	}
+
+	await pdfDirectoryPromise;
+}
+
+async function toImageTag(publicPath: string, label: string): Promise<string> {
+	const absolutePath = resolve(process.cwd(), 'static', publicPath.replace(/^(\/)+/, ''));
+	const buffer = await readFile(absolutePath);
+	const extension = extname(absolutePath).slice(1).toLowerCase() || 'jpeg';
+	const mimeType = extension === 'jpg' ? 'image/jpeg' : `image/${extension}`;
+	const base64 = buffer.toString('base64');
+
+	return `<img src="data:${mimeType};base64,${base64}" alt="${escapeHtml(label)}" />`;
+}
+
+async function buildPhotoMarkup(submission: FormSubmissionRecord): Promise<string> {
+	if (submission.files.length === 0) {
+		return '<p>Tidak ada dokumentasi terlampir.</p>';
+	}
+
+	const tags = await Promise.all(
+		submission.files.map((file) => toImageTag(file.path, file.originalName || basename(file.path)))
+	);
+
+	return tags.join('');
+}
+
+function buildDescription(submission: FormSubmissionRecord): string {
+	const status = readField(submission.fields, 'melaksanakanMeeting');
+
+	if (status === 'Ya') {
+		return readField(submission.fields, 'deskripsiMeeting') || '-';
+	}
+
+	const alasanTidakMeeting = readField(submission.fields, 'alasanTidakMeeting');
+	const alasanLainnya = readField(submission.fields, 'alasanLainnya');
+
+	return alasanLainnya || alasanTidakMeeting || '-';
+}
+
+function buildTemplateData(submission: FormSubmissionRecord, photos: string): Record<string, string> {
+	return {
+		employee_name: escapeHtml(readField(submission.fields, 'namaPegawai') || '-'),
+		employee_id: escapeHtml(readField(submission.fields, 'nomorPegawaian') || '-'),
+		meeting_date: escapeHtml(formatDisplayDate(readField(submission.fields, 'tanggalMeeting'))),
+		meeting_title: escapeHtml(readField(submission.fields, 'judulMeeting') || '-'),
+		meeting_status: escapeHtml(readField(submission.fields, 'melaksanakanMeeting') || '-'),
+		description: escapeHtml(buildDescription(submission)),
+		photos
+	};
+}
+
+export async function generateMeetingReportPdf(submission: FormSubmissionRecord): Promise<string> {
+	await ensurePdfDirectory();
+
+	const photos = await buildPhotoMarkup(submission);
+	const templateData = buildTemplateData(submission, photos);
+	const pdfBuffer = await generatePdf(templateData, 'laporan.html');
+	const outputFileName = `meeting-report-${submission.id}.pdf`;
+	const outputPath = resolve(generatedPdfDirectory, outputFileName);
+	const publicPath = `/generated-pdfs/meeting-reports/${outputFileName}`;
+
+	await writeFile(outputPath, pdfBuffer);
+	await updateFormSubmissionPdfLink(submission.id, publicPath);
+
+	return publicPath;
+}
+
+export function queueMeetingReportPdfGeneration(submission: FormSubmissionRecord): void {
+	void (async () => {
+		try {
+			await generateMeetingReportPdf(submission);
+		} catch (error) {
+			console.error('Failed to generate meeting PDF', {
+				submissionId: submission.id,
+				error
+			});
+		}
+	})();
+}

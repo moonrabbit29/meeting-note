@@ -1,0 +1,1 @@
+ALTER TABLE `form_submissions` ADD `pdf_link` text;

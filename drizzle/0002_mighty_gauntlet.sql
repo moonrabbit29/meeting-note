@@ -1,0 +1,1 @@
+ALTER TABLE `form_submissions` ADD `submission_type` text DEFAULT 'upload-form' NOT NULL;
