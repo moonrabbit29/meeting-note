@@ -1,5 +1,6 @@
 import {
 	insertFormSubmission,
+	listFormSubmissionRowsMissingPdf,
 	listFormSubmissionRows,
 	type FormSubmissionRow,
     type SubmissionType
@@ -12,6 +13,7 @@ import {
 
 export interface FormSubmissionRecord {
 	id: number;
+	employeeId: number | null;
 	submissionType: SubmissionType;
 	pdfLink: string | null;
 	fields: Record<string, string | string[]>;
@@ -54,6 +56,7 @@ function toSubmissionType(value: string): SubmissionType {
 function toSubmissionRecord(row: FormSubmissionRow): FormSubmissionRecord {
 	return {
 		id: row.id,
+		employeeId: row.employeeId,
 		submissionType: toSubmissionType(row.submissionType),
 		pdfLink: row.pdfLink,
 		fields: parseJson<Record<string, string | string[]>>(row.fieldsJson),
@@ -84,9 +87,11 @@ function extractFields(formData: FormData): Record<string, string | string[]> {
 
 export async function createFormSubmission(
 	formData: FormData,
+	employeeId: number,
 	submissionType: 'upload-form' | 'meeting' = 'upload-form'
 ): Promise<FormSubmissionRecord> {
 	const fields = extractFields(formData);
+	fields.employeeId = String(employeeId);
 	const files = await persistUploadedFiles(formData);
 
 	if (Object.keys(fields).length === 0 && files.length === 0) {
@@ -94,6 +99,7 @@ export async function createFormSubmission(
 	}
 
 	const insertedRow = await insertFormSubmission({
+		employeeId,
 		submissionType,
 		pdfLink: null,
 		fieldsJson: JSON.stringify(fields),
@@ -109,4 +115,12 @@ export async function listFormSubmissions(
 	const rows = await listFormSubmissionRows(submissionType);
 
 	return rows.map(toSubmissionRecord);
+}
+
+export async function listFormSubmissionsMissingPdf(
+	submissionType: 'upload-form' | 'meeting'
+): Promise<FormSubmissionRecord[]> {
+	const rows = await listFormSubmissionRowsMissingPdf(submissionType);
+
+	return rows.filter((row) => row.pdfLink == null).map(toSubmissionRecord);
 }

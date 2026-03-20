@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, extname, resolve } from 'node:path';
+import { basename, extname, resolve } from 'node:path';
 
-import type { FormSubmissionRecord } from '$lib/server/form-submissions';
+import {
+	listFormSubmissionsMissingPdf,
+	type FormSubmissionRecord
+} from '$lib/server/form-submissions';
 import { updateFormSubmissionPdfLink } from '$lib/server/repositories/form-submissions';
 
 import { generatePdf } from './generatedPdf';
@@ -129,4 +132,26 @@ export function queueMeetingReportPdfGeneration(submission: FormSubmissionRecord
 			});
 		}
 	})();
+}
+
+let backfillPromise: Promise<number> | null = null;
+
+export function queueMissingMeetingReportPdfGeneration(): Promise<number> {
+	if (!backfillPromise) {
+		backfillPromise = (async () => {
+			const submissions = await listFormSubmissionsMissingPdf('meeting');
+			let processed = 0;
+
+			for (const submission of submissions) {
+				await generateMeetingReportPdf(submission);
+				processed += 1;
+			}
+
+			return processed;
+		})().finally(() => {
+			backfillPromise = null;
+		});
+	}
+
+	return backfillPromise;
 }

@@ -1,5 +1,8 @@
 import { createFormSubmission, listFormSubmissions, type FormSubmissionRecord } from '$lib/server/form-submissions';
-import { queueMeetingReportPdfGeneration } from '$lib/server/pdf/meetingReportPdf';
+import {
+	queueMeetingReportPdfGeneration,
+	queueMissingMeetingReportPdfGeneration
+} from '$lib/server/pdf/meetingReportPdf';
 
 type MeetingChoice = 'Ya' | 'Tidak';
 
@@ -52,9 +55,12 @@ function validateMeetingSubmission(formData: FormData): void {
 	}
 }
 
-export async function createMeetingFormSubmission(formData: FormData): Promise<FormSubmissionRecord> {
+export async function createMeetingFormSubmission(
+	formData: FormData,
+	employeeId: number
+): Promise<FormSubmissionRecord> {
 	validateMeetingSubmission(formData);
-	const submission = await createFormSubmission(formData, 'meeting');
+	const submission = await createFormSubmission(formData, employeeId, 'meeting');
 
 	queueMeetingReportPdfGeneration(submission);
 
@@ -63,4 +69,8 @@ export async function createMeetingFormSubmission(formData: FormData): Promise<F
 
 export function listMeetingFormSubmissions(): Promise<FormSubmissionRecord[]> {
 	return listFormSubmissions('meeting');
+}
+
+export function backfillMeetingPdfReports(): Promise<number> {
+	return queueMissingMeetingReportPdfGeneration();
 }

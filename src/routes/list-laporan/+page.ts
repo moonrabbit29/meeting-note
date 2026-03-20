@@ -15,6 +15,7 @@ type SubmissionRecord = {
 	fields: Record<string, string | string[]>;
 	files: SubmissionFile[];
 	submittedAt: string;
+	pdfLink: string | null;
 };
 
 export const load: PageLoad = async ({ fetch }) => {

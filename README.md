@@ -40,3 +40,14 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Account APIs
+
+- `POST /api/accounts/owner`: bootstrap the first owner account. This route only works once.
+- `POST /api/login`: authenticate with `email` and `password`, returns a bearer token.
+- `POST /api/logout`: revoke the current session and clear the auth cookie.
+- `POST /api/signup`: owner-only route to create `admin` or `employee` users.
+- `GET /api/accounts`: owner-only route to list users.
+- `PATCH /api/accounts/:accountId`: owner-only route to deactivate or reactivate a user with `{ "isActive": false }`.
+
+Authentication works with `Authorization: Bearer <token>` and the login/bootstrap routes also set an HTTP-only session cookie.

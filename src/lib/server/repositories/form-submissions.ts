@@ -7,6 +7,7 @@ export type FormSubmissionRow = typeof formSubmissions.$inferSelect;
 export type SubmissionType = 'upload-form' | 'meeting';
 
 export async function insertFormSubmission(values: {
+	employeeId: number;
 	submissionType: SubmissionType;
 	pdfLink?: string | null;
 	fieldsJson: string;
@@ -48,4 +49,14 @@ export function listFormSubmissionRows(submissionType?: SubmissionType): Promise
 	}
 
 	return query.orderBy(desc(formSubmissions.submittedAt), desc(formSubmissions.id));
+}
+
+export function listFormSubmissionRowsMissingPdf(
+	submissionType: SubmissionType
+): Promise<FormSubmissionRow[]> {
+	return db
+		.select()
+		.from(formSubmissions)
+		.where(eq(formSubmissions.submissionType, submissionType))
+		.orderBy(desc(formSubmissions.submittedAt), desc(formSubmissions.id));
 }

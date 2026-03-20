@@ -1,6 +1,7 @@
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 
 import {
+	backfillMeetingPdfReports,
 	createMeetingFormSubmission,
 	listMeetingFormSubmissions
 } from '$lib/server/meeting-form-submissions';
@@ -11,7 +12,18 @@ export const GET: RequestHandler = async () => {
 	return json({ submissions });
 };
 
-export const POST: RequestHandler = async ({ request }: RequestEvent) => {
+export const POST: RequestHandler = async ({ request, locals }: RequestEvent) => {
+	const action = new URL(request.url).searchParams.get('action');
+
+	if (action === 'backfill-pdf') {
+		void backfillMeetingPdfReports();
+
+		return json(
+			{ message: 'Background PDF generation started for submissions without PDF links.' },
+			{ status: 202 }
+		);
+	}
+
 	const contentType = request.headers.get('content-type') ?? '';
 	const acceptsFormData =
 		contentType.includes('multipart/form-data') ||
@@ -25,8 +37,12 @@ export const POST: RequestHandler = async ({ request }: RequestEvent) => {
 	}
 
 	try {
+		if (!locals.account) {
+			return json({ error: 'Authentication required' }, { status: 401 });
+		}
+
 		const formData = await request.formData();
-		const submission = await createMeetingFormSubmission(formData);
+		const submission = await createMeetingFormSubmission(formData, locals.account.id);
 
 		return json({ submission }, { status: 201 });
 	} catch (error) {

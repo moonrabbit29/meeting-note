@@ -1,132 +1,65 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Laporan Meeting</title>
-
-<style>
-body{
-  font-family: Arial, sans-serif;
-  margin:40px;
-  color:#333;
-}
-
-.header{
-  text-align:center;
-  margin-bottom:30px;
-}
-
-.header h1{
-  margin:0;
-  font-size:24px;
-}
-
-.section{
-  margin-top:30px;
-}
-
-.label{
-  font-weight:bold;
-  width:180px;
-}
-
-.row{
-  display:flex;
-  margin-bottom:8px;
-}
-
-.value{
-  flex:1;
-}
-
-.box{
-  border:1px solid #ddd;
-  padding:15px;
-  border-radius:6px;
-}
-
-.description{
-  white-space:pre-line;
-}
-
-.image-container{
-  margin-top:15px;
-}
-
-.image-container img{
-  width:300px;
-  margin-right:10px;
-  margin-bottom:10px;
-  border-radius:6px;
-  border:1px solid #ccc;
-}
-
-.footer{
-  margin-top:40px;
-  font-size:12px;
-  color:#777;
-}
-</style>
-
+  <meta charset="UTF-8" />
+  <title>BAPPEDA Header</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      border-bottom: 2px solid black;
+      padding-bottom: 10px;
+    }
+    .logo {
+      width: 100px;
+      height: 100px;
+      margin-right: 20px;
+      /* Placeholder for logo */
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #999;
+    }
+    .text {
+      flex: 1;
+      text-align: center;
+    }
+    .title {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .subtitle {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .info {
+      font-size: 14px;
+    }
+  </style>
 </head>
-
 <body>
 
 <div class="header">
-<h1>LAPORAN MEETING</h1>
-</div>
+  <div class="logo">
+    LOGO
+  </div>
 
-<div class="section box">
-
-<div class="row">
-<div class="label">Nama Pegawai</div>
-<div class="value">{{employee_name}}</div>
-</div>
-
-<div class="row">
-<div class="label">Nomor Pegawai</div>
-<div class="value">{{employee_id}}</div>
-</div>
-
-<div class="row">
-<div class="label">Tanggal Meeting</div>
-<div class="value">{{meeting_date}}</div>
-</div>
-
-<div class="row">
-<div class="label">Judul Meeting</div>
-<div class="value">{{meeting_title}}</div>
-</div>
-
-<div class="row">
-<div class="label">Status Meeting</div>
-<div class="value">{{meeting_status}}</div>
-</div>
-
-</div>
-
-<div class="section">
-
-<h3>Deskripsi Meeting</h3>
-
-<div class="box description">
-{{description}}
-</div>
-
-</div>
-
-<div class="section">
-
-<h3>Dokumentasi Meeting</h3>
-
-<div class="image-container">
-{{photos}}
-</div>
-
-</div>
-
-<div class="footer">
-Generated automatically by Meeting Report System
+  <div class="text">
+    <div class="title">PEMERINTAH PROVINSI NUSA TENGGARA BARAT</div>
+    <div class="subtitle">BADAN PERENCANAAN PEMBANGUNAN DAERAH</div>
+    <div class="info">
+      Alamat : Jln. Flamboyan No. 2 Mataram Kode Pos 83126, Telepon/Faksimile (0370) 631581
+    </div>
+    <div class="info">
+      Email : bappeda@ntbprov.go.id &nbsp;&nbsp; Website : bappeda.ntbprov.go.id
+    </div>
+  </div>
 </div>
 
 </body>

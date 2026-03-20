@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const backfillMeetingPdfReports = vi.fn();
 const createMeetingFormSubmission = vi.fn();
 const listMeetingFormSubmissions = vi.fn();
 
 vi.mock('$lib/server/meeting-form-submissions', () => ({
+	backfillMeetingPdfReports,
 	createMeetingFormSubmission,
 	listMeetingFormSubmissions
 }));
@@ -20,12 +22,13 @@ describe('/api/form-submission', () => {
 				submissionType: 'meeting',
 				fields: { namaPegawai: 'Dendi' },
 				files: [],
+				pdfLink: null,
 				submittedAt: '2026-03-15 10:00:00'
 			}
 		]);
 
 		const { GET } = await import('../../src/routes/api/form-submission/+server');
-		const response = await GET();
+		const response = await GET({ request: new Request('http://localhost/api/form-submission') } as never);
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
@@ -36,10 +39,27 @@ describe('/api/form-submission', () => {
 					submissionType: 'meeting',
 					fields: { namaPegawai: 'Dendi' },
 					files: [],
+					pdfLink: null,
 					submittedAt: '2026-03-15 10:00:00'
 				}
 			]
 		});
+	});
+
+	it('starts background PDF backfill when requested', async () => {
+		backfillMeetingPdfReports.mockResolvedValueOnce(3);
+
+		const { POST } = await import('../../src/routes/api/form-submission/+server');
+		const request = new Request('http://localhost/api/form-submission?action=backfill-pdf', {
+			method: 'POST'
+		});
+
+		const response = await POST({ request, locals: { account: null } } as never);
+		const body = await response.json();
+
+		expect(response.status).toBe(202);
+		expect(backfillMeetingPdfReports).toHaveBeenCalledTimes(1);
+		expect(body.message).toContain('Background PDF generation started');
 	});
 
 	it('rejects unsupported content types on POST', async () => {
@@ -52,7 +72,7 @@ describe('/api/form-submission', () => {
 			body: JSON.stringify({})
 		});
 
-		const response = await POST({ request } as never);
+		const response = await POST({ request, locals: { account: null } } as never);
 		const body = await response.json();
 
 		expect(response.status).toBe(415);
@@ -65,6 +85,7 @@ describe('/api/form-submission', () => {
 			submissionType: 'meeting',
 			fields: { namaPegawai: 'Dendi', judulMeeting: 'Rapat Mingguan' },
 			files: [],
+			pdfLink: null,
 			submittedAt: '2026-03-15 11:00:00'
 		});
 
@@ -82,12 +103,36 @@ describe('/api/form-submission', () => {
 			body: formData
 		});
 
-		const response = await POST({ request } as never);
+		const response = await POST({
+			request,
+			locals: {
+				account: { id: 7 }
+			}
+		} as never);
 		const body = await response.json();
 
 		expect(response.status).toBe(201);
 		expect(createMeetingFormSubmission).toHaveBeenCalledTimes(1);
+		expect(createMeetingFormSubmission).toHaveBeenCalledWith(expect.any(FormData), 7);
 		expect(body.submission.id).toBe(2);
+	});
+
+	it('rejects unauthenticated POST requests', async () => {
+		const formData = new FormData();
+		formData.append('namaPegawai', 'Dendi');
+
+		const { POST } = await import('../../src/routes/api/form-submission/+server');
+		const request = new Request('http://localhost/api/form-submission', {
+			method: 'POST',
+			body: formData
+		});
+
+		const response = await POST({ request, locals: { account: null } } as never);
+		const body = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(body).toEqual({ error: 'Authentication required' });
+		expect(createMeetingFormSubmission).not.toHaveBeenCalled();
 	});
 
 	it('maps validation errors to 400 on POST', async () => {
@@ -100,7 +145,7 @@ describe('/api/form-submission', () => {
 			body: formData
 		});
 
-		const response = await POST({ request } as never);
+		const response = await POST({ request, locals: { account: { id: 1 } } } as never);
 		const body = await response.json();
 
 		expect(response.status).toBe(400);

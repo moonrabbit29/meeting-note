@@ -8,6 +8,7 @@
 		"db:migrate": "tsx scripts/migrate.ts",
 		"dev": "vite dev",
 		"build": "vite build",
+		"pdf:backfill": "tsx scripts/pdf-backfill.ts",
 		"preview": "vite preview",
 		"server:dev": "tsx server/index.ts",
 		"prepare": "svelte-kit sync || echo ''",

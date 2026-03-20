@@ -8,7 +8,7 @@ Department
 department -->
 
 <script lang="ts">
-    import { onDestroy } from "svelte";
+    import { onDestroy, onMount } from "svelte";
 
     type MeetingOption = "" | "Ya" | "Tidak";
     const alasanTidakMeeting = [
@@ -21,6 +21,7 @@ department -->
     ];
 
     interface FormValues {
+        employeeId: string;
         namaPegawai: string;
         nomorPegawaian: string;
         tanggalMeeting: string;
@@ -42,6 +43,7 @@ department -->
 
     function getInitialFormValues(): FormValues {
         return {
+            employeeId: "",
             namaPegawai: "",
             nomorPegawaian: "",
             tanggalMeeting: "",
@@ -95,8 +97,10 @@ department -->
     }
 
     function resetForm(): void {
+        const employeeId = form.employeeId;
         removeImage();
         form = getInitialFormValues();
+        form.employeeId = employeeId;
         errors = {};
     }
 
@@ -125,6 +129,9 @@ department -->
     function validateForm(): boolean {
         const nextErrors: FormErrors = {};
 
+        if (!form.employeeId.trim()) {
+            nextErrors.employeeId = "Employee ID tidak ditemukan. Silakan login ulang";
+        }
         if (!form.namaPegawai.trim())
             nextErrors.namaPegawai = "Nama pegawai wajib diisi";
         if (!form.nomorPegawaian.trim()) {
@@ -224,6 +231,7 @@ department -->
         try {
             const payload = new FormData();
 
+            appendIfPresent(payload, "employeeId", form.employeeId);
             appendIfPresent(payload, "namaPegawai", form.namaPegawai);
             appendIfPresent(payload, "nomorPegawaian", form.nomorPegawaian);
             appendIfPresent(payload, "tanggalMeeting", form.tanggalMeeting);
@@ -285,6 +293,14 @@ department -->
             URL.revokeObjectURL(imagePreview);
         }
     });
+
+    onMount(() => {
+        const employeeId = sessionStorage.getItem("meeting-note-employee-id") ?? "";
+
+        if (employeeId) {
+            updateField("employeeId", employeeId);
+        }
+    });
 </script>
 
 <svelte:head>
@@ -320,6 +336,17 @@ department -->
 
         <form class="report-form" onsubmit={handleSubmit}>
             <div class="field-grid">
+                <label class="field">
+                    <span>Employee ID*</span>
+                    <input
+                        type="text"
+                        bind:value={form.employeeId}
+                        readonly
+                        placeholder="Auto dari session"
+                    />
+                    {#if errors.employeeId}<small>{errors.employeeId}</small>{/if}
+                </label>
+
                 <label class="field">
                     <span>Nama Pegawai*</span>
                     <input

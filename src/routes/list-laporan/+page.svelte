@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+
 	type SubmissionFile = {
 		fieldName: string;
 		originalName: string;
@@ -23,6 +25,9 @@
 			loadError: string | null;
 		};
 	}>();
+
+	let backfillMessage = $state<string | null>(null);
+	let isBackfilling = $state(false);
 
 	function formatDate(value: string): string {
 		const date = new Date(value.replace(' ', 'T'));
@@ -54,6 +59,30 @@
 	function getFieldEntries(fields: SubmissionRecord['fields']): Array<[string, string | string[]]> {
 		return Object.entries(fields) as Array<[string, string | string[]]>;
 	}
+
+	async function triggerPdfBackfill(): Promise<void> {
+		backfillMessage = null;
+		isBackfilling = true;
+
+		try {
+			const response = await fetch('/api/form-submission?action=backfill-pdf', {
+				method: 'POST'
+			});
+			const result = (await response.json()) as { message?: string; error?: string };
+
+			if (!response.ok) {
+				throw new Error(result.error ?? 'Gagal menjalankan background PDF generation');
+			}
+
+			backfillMessage =
+				result.message ?? 'Background PDF generation started for submissions without PDF links.';
+			await invalidateAll();
+		} catch (error) {
+			backfillMessage = error instanceof Error ? error.message : 'Terjadi kesalahan';
+		} finally {
+			isBackfilling = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -76,9 +105,21 @@
 
 		<div class="content-panel">
 			<div class="toolbar">
-				<a class="ghost-link" href="/form-laporan">Buat laporan baru</a>
+				<div class="toolbar-actions">
+					<a class="ghost-link" href="/form-laporan">Buat laporan baru</a>
+					<button class="ghost-link toolbar-button" type="button" onclick={triggerPdfBackfill} disabled={isBackfilling}>
+						{isBackfilling ? 'Memulai proses...' : 'Generate PDF yang belum ada'}
+					</button>
+				</div>
 				<div class="count-chip">{data.submissions.length} laporan</div>
 			</div>
+
+			{#if backfillMessage}
+				<div class="notice info" role="status">
+					<strong>Background task</strong>
+					<span>{backfillMessage}</span>
+				</div>
+			{/if}
 
 			{#if data.loadError}
 				<div class="notice error" role="alert">
@@ -208,6 +249,12 @@
 		flex-wrap: wrap;
 	}
 
+	.toolbar-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
 	.ghost-link,
 	.count-chip {
 		border-radius: 999px;
@@ -219,6 +266,12 @@
 		text-decoration: none;
 		background: #e7edf0;
 		color: #17384f;
+	}
+
+	.toolbar-button {
+		border: 0;
+		cursor: pointer;
+		font: inherit;
 	}
 
 	.count-chip {
@@ -244,6 +297,14 @@
 	.notice.error {
 		color: #892626;
 		background: #fdecec;
+	}
+
+	.notice.info {
+		padding: 1.2rem;
+		display: grid;
+		gap: 0.35rem;
+		color: #144f6d;
+		background: #e9f3fa;
 	}
 
 	.empty-state h2,
