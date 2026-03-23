@@ -10,12 +10,21 @@ department -->
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
 
+    type CalendarEventPrefillResponse = {
+        event?: {
+            id: number;
+            title: string;
+            startTime: string;
+        };
+        error?: string;
+    };
+
     type MeetingOption = "" | "Ya" | "Tidak";
     const alasanTidakMeeting = [
         { value: "lupa", label: "Lupa" },
         {
             value: "tidak-tahu",
-            label: "Tidak mengetahui program ini dan takut salah"
+            label: "Tidak mengetahui program ini dan takut salah",
         },
         { value: "lainnya", label: "Other" },
     ];
@@ -23,7 +32,6 @@ department -->
     interface FormValues {
         employeeId: string;
         namaPegawai: string;
-        nomorPegawaian: string;
         tanggalMeeting: string;
         judulMeeting: string;
         deskripsiMeeting: string;
@@ -45,7 +53,6 @@ department -->
         return {
             employeeId: "",
             namaPegawai: "",
-            nomorPegawaian: "",
             tanggalMeeting: "",
             judulMeeting: "",
             deskripsiMeeting: "",
@@ -55,6 +62,26 @@ department -->
             alasanLainnya: "",
         };
     }
+    interface QuillEditor {
+        on: (event: string, handler: (...args: unknown[]) => void) => void;
+        root: HTMLElement;
+        setContents: (delta: unknown[]) => void;
+        disable: () => void;
+        getSemanticHTML: () => string;
+    }
+
+    const quillFontWhitelist = [
+        "Arial",
+        "Courier",
+        "Garamond",
+        "Tahoma",
+        "Times New Roman",
+        "Verdana",
+    ];
+
+    let quillInstance: QuillEditor | null = null;
+    let QuillClass: any = null; // cached module
+    let quillSetupPromise: Promise<void> | null = null;
 
     let form = $state<FormValues>(getInitialFormValues());
     let errors = $state<FormErrors>({});
@@ -62,6 +89,8 @@ department -->
     let imagePreview = $state<string | null>(null);
     let isSubmitting = $state(false);
     let fileInput = $state<HTMLInputElement | undefined>(undefined);
+    let linkedCalendarEventId = $state<string>("");
+    let isLinkedCalendarPrefill = $state(false);
 
     function clearFieldError(field: FieldName): void {
         if (!errors[field]) {
@@ -102,6 +131,7 @@ department -->
         form = getInitialFormValues();
         form.employeeId = employeeId;
         errors = {};
+        quillInstance?.setContents([]);
     }
 
     function setNotice(
@@ -130,15 +160,11 @@ department -->
         const nextErrors: FormErrors = {};
 
         if (!form.employeeId.trim()) {
-            nextErrors.employeeId = "Employee ID tidak ditemukan. Silakan login ulang";
+            nextErrors.employeeId =
+                "Employee ID tidak ditemukan. Silakan login ulang";
         }
         if (!form.namaPegawai.trim())
             nextErrors.namaPegawai = "Nama pegawai wajib diisi";
-        if (!form.nomorPegawaian.trim()) {
-            nextErrors.nomorPegawaian = "Nomor pegawaian wajib diisi";
-        } else if (!/^\d+$/.test(form.nomorPegawaian.trim())) {
-            nextErrors.nomorPegawaian = "Hanya boleh input angka";
-        }
         if (!form.tanggalMeeting)
             nextErrors.tanggalMeeting = "Tanggal meeting wajib diisi";
         if (!form.judulMeeting.trim())
@@ -149,8 +175,7 @@ department -->
 
         if (form.melaksanakanMeeting === "Ya") {
             if (!form.deskripsiMeeting.trim()) {
-                nextErrors.deskripsiMeeting =
-                    "Deskripsi meeting wajib diisi";
+                nextErrors.deskripsiMeeting = "Deskripsi meeting wajib diisi";
             }
             if (!form.fotoMeeting) {
                 nextErrors.fotoMeeting = "Foto acara wajib diupload";
@@ -218,6 +243,16 @@ department -->
         }
     }
 
+    function toDateInputValue(value: string): string {
+        const parsed = new Date(value);
+
+        if (Number.isNaN(parsed.getTime())) {
+            return "";
+        }
+
+        return parsed.toISOString().slice(0, 10);
+    }
+
     async function handleSubmit(event: SubmitEvent): Promise<void> {
         event.preventDefault();
         notice = null;
@@ -232,8 +267,8 @@ department -->
             const payload = new FormData();
 
             appendIfPresent(payload, "employeeId", form.employeeId);
+            appendIfPresent(payload, "eventId", linkedCalendarEventId);
             appendIfPresent(payload, "namaPegawai", form.namaPegawai);
-            appendIfPresent(payload, "nomorPegawaian", form.nomorPegawaian);
             appendIfPresent(payload, "tanggalMeeting", form.tanggalMeeting);
             appendIfPresent(payload, "judulMeeting", form.judulMeeting);
             appendIfPresent(
@@ -294,13 +329,115 @@ department -->
         }
     });
 
-    onMount(() => {
-        const employeeId = sessionStorage.getItem("meeting-note-employee-id") ?? "";
+    onMount(async () => {
+        const employeeId =
+            sessionStorage.getItem("meeting-note-employee-id") ?? "";
+        const eventId = new URLSearchParams(window.location.search).get("eventId") ?? "";
 
         if (employeeId) {
             updateField("employeeId", employeeId);
         }
+
+        if (eventId) {
+            linkedCalendarEventId = eventId;
+
+            try {
+                const response = await fetch(`/api/calendar?eventId=${eventId}`);
+                const result =
+                    (await response.json()) as CalendarEventPrefillResponse;
+
+                if (!response.ok || !result.event) {
+                    throw new Error(result.error ?? "Gagal memuat data meeting");
+                }
+
+                form.judulMeeting = result.event.title;
+                form.tanggalMeeting = toDateInputValue(result.event.startTime);
+                isLinkedCalendarPrefill = true;
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : "Gagal memuat data meeting";
+                setNotice("error", "Gagal memuat meeting", message);
+            }
+        }
+
+        quillSetupPromise = (async () => {
+            if (QuillClass) {
+                return;
+            }
+
+            const mod = await import("quill");
+            const Quill = mod.default;
+
+            const FontStyle = Quill.import("attributors/style/font") as {
+                whitelist: string[];
+            };
+            const AlignStyle = Quill.import("attributors/style/align") as any;
+
+            FontStyle.whitelist = quillFontWhitelist;
+
+            Quill.register(FontStyle as any, true);
+            Quill.register(AlignStyle, true);
+
+            QuillClass = Quill;
+        })();
+
+        await quillSetupPromise;
     });
+
+    function initQuillEditor(node: HTMLDivElement) {
+        let destroyed = false;
+
+        (async () => {
+            if (quillSetupPromise) {
+                await quillSetupPromise;
+            }
+
+            if (destroyed || !QuillClass) {
+                return;
+            }
+
+            const editor: QuillEditor = new QuillClass(node, {
+                theme: "snow",
+                placeholder:
+                    "Tuliskan ringkasan hasil meeting, agenda, atau poin penting pembahasan",
+                modules: {
+                    toolbar: [
+                        ["bold", "italic", "underline", "strike"],
+                        ["blockquote", "code-block"],
+                        [{ header: 1 }, { header: 2 }],
+                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                        [{ list: "ordered" }, { list: "bullet" }],
+                        [{ indent: "-1" }, { indent: "+1" }],
+                        [{ align: [] }],
+                        [{ direction: "rtl" }],
+                        [{ script: "sub" }, { script: "super" }],
+                        [{ size: ["small", false, "large", "huge"] }],
+                        [{ font: quillFontWhitelist }],
+                        [{ color: [] }, { background: [] }],
+                        ["link", "image", "video", "formula"],
+                        ["clean"],
+                    ],
+                },
+            });
+
+            if (destroyed) return;
+
+            quillInstance = editor;
+
+            editor.on("text-change", () => {
+                const html = editor.getSemanticHTML();
+                form.deskripsiMeeting = html === "<p><br></p>" ? "" : html;
+                clearFieldError("deskripsiMeeting");
+            });
+        })();
+
+        return {
+            destroy() {
+                destroyed = true;
+                quillInstance = null;
+            },
+        };
+    }
 </script>
 
 <svelte:head>
@@ -308,6 +445,10 @@ department -->
     <meta
         name="description"
         content="Form laporan FA Program GOCAP dengan upload foto pemenang dan validasi dinamis."
+    />
+    <link
+        href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css"
+        rel="stylesheet"
     />
 </svelte:head>
 
@@ -344,7 +485,8 @@ department -->
                         readonly
                         placeholder="Auto dari session"
                     />
-                    {#if errors.employeeId}<small>{errors.employeeId}</small>{/if}
+                    {#if errors.employeeId}<small>{errors.employeeId}</small
+                        >{/if}
                 </label>
 
                 <label class="field">
@@ -360,25 +502,13 @@ department -->
                 </label>
 
                 <label class="field">
-                    <span>Nomor Pegawaian*</span>
-                    <input
-                        type="text"
-                        bind:value={form.nomorPegawaian}
-                        oninput={() => clearFieldError("nomorPegawaian")}
-                        placeholder="Masukkan nomor pegawaian"
-                    />
-                    {#if errors.nomorPegawaian}<small
-                            >{errors.nomorPegawaian}</small
-                        >{/if}
-                </label>
-
-                <label class="field">
                     <span>Tanggal Meeting*</span>
                     <input
                         type="date"
                         bind:value={form.tanggalMeeting}
                         max={new Date().toISOString().slice(0, 10)}
                         oninput={() => clearFieldError("tanggalMeeting")}
+                        disabled={isLinkedCalendarPrefill}
                     />
                     <em>{formatDisplayDate(form.tanggalMeeting)}</em>
                     {#if errors.tanggalMeeting}<small
@@ -393,6 +523,7 @@ department -->
                         bind:value={form.judulMeeting}
                         oninput={() => clearFieldError("judulMeeting")}
                         placeholder="Masukkan judul meeting"
+                        readonly={isLinkedCalendarPrefill}
                     />
                     {#if errors.judulMeeting}<small>{errors.judulMeeting}</small
                         >{/if}
@@ -427,18 +558,16 @@ department -->
                     <h2>Data Meeting</h2>
 
                     <div class="field-grid">
-                        <label class="field field-full">
+                        <div class="field field-full">
                             <span>Deskripsi Meeting *</span>
-                            <textarea
-                                bind:value={form.deskripsiMeeting}
-                                oninput={() => clearFieldError("deskripsiMeeting")}
-                                placeholder="Tuliskan ringkasan hasil meeting, agenda, atau poin penting pembahasan"
-                                rows="6"
-                            ></textarea>
+                            <div
+                                use:initQuillEditor
+                                class="quill-editor"
+                            ></div>
                             {#if errors.deskripsiMeeting}<small
                                     >{errors.deskripsiMeeting}</small
                                 >{/if}
-                        </label>
+                        </div>
 
                         <div class="field field-full">
                             <span>Foto Meeting *</span>
@@ -577,6 +706,74 @@ department -->
         color: #fff8ef;
     }
 
+    /* Quill editor */
+    .quill-editor {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #cdd9de;
+        background: white;
+    }
+
+    :global(.quill-editor .ql-toolbar) {
+        border: none;
+        border-bottom: 1px solid #cdd9de;
+        background: #f9f6f1;
+    }
+
+    :global(.quill-editor .ql-container) {
+        border: none;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+            serif;
+        font-size: 1rem;
+        min-height: 10rem;
+    }
+
+    :global(.quill-editor .ql-editor) {
+        padding: 0.9rem 1rem;
+        min-height: 10rem;
+    }
+
+    :global(.quill-editor .ql-editor.ql-blank::before) {
+        color: #9ab0bb;
+        font-style: normal;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Arial"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Arial"]::before) {
+        content: "Arial";
+        font-family: Arial, sans-serif;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Courier"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Courier"]::before) {
+        content: "Courier";
+        font-family: "Courier New", Courier, monospace;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Garamond"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Garamond"]::before) {
+        content: "Garamond";
+        font-family: Garamond, "Times New Roman", serif;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Tahoma"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Tahoma"]::before) {
+        content: "Tahoma";
+        font-family: Tahoma, Geneva, sans-serif;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Times New Roman"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Times New Roman"]::before) {
+        content: "Times New Roman";
+        font-family: "Times New Roman", Times, serif;
+    }
+
+    :global(.quill-editor .ql-font .ql-picker-item[data-value="Verdana"]::before),
+    :global(.quill-editor .ql-font .ql-picker-label[data-value="Verdana"]::before) {
+        content: "Verdana";
+        font-family: Verdana, Geneva, sans-serif;
+    }
+
     .eyebrow {
         margin: 0 0 0.4rem;
         letter-spacing: 0.2em;
@@ -649,8 +846,7 @@ department -->
         font-weight: 700;
     }
 
-    input,
-    textarea {
+    input {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid #cdd9de;
@@ -661,13 +857,7 @@ department -->
         color: inherit;
     }
 
-    textarea {
-        resize: vertical;
-        min-height: 10rem;
-    }
-
-    input:focus,
-    textarea:focus {
+    input:focus {
         outline: 2px solid rgba(193, 106, 32, 0.24);
         border-color: #c16a20;
     }

@@ -15,6 +15,7 @@ function isProtectedPath(pathname: string): boolean {
 	}
 
 	if (
+		pathname.startsWith('/calendar') ||
 		pathname.startsWith('/form-laporan') ||
 		pathname.startsWith('/list-laporan') ||
 		pathname.startsWith('/accounts')

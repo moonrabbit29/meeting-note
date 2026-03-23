@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { db } from '$lib/server/db';
 import { formSubmissions } from '$lib/server/schema/form-submissions';
@@ -57,6 +57,21 @@ export function listFormSubmissionRowsMissingPdf(
 	return db
 		.select()
 		.from(formSubmissions)
-		.where(eq(formSubmissions.submissionType, submissionType))
+		.where(
+			and(
+				eq(formSubmissions.submissionType, submissionType),
+				isNull(formSubmissions.pdfLink)
+			)
+		)
 		.orderBy(desc(formSubmissions.submittedAt), desc(formSubmissions.id));
+}
+
+export async function findFormSubmissionRowById(id: number): Promise<FormSubmissionRow | null> {
+	const [row] = await db
+		.select()
+		.from(formSubmissions)
+		.where(eq(formSubmissions.id, id))
+		.limit(1);
+
+	return row ?? null;
 }

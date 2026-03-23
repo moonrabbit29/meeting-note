@@ -1,66 +1,257 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>BAPPEDA Header</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
+    .section-body {
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      margin: 1cm 1.5cm 1.5cm 2cm;
+      background-color: white;
+      color: black;
     }
+
     .header {
       display: flex;
       align-items: center;
       border-bottom: 2px solid black;
       padding-bottom: 10px;
     }
+
     .logo {
       width: 100px;
       height: 100px;
       margin-right: 20px;
-      /* Placeholder for logo */
-      border: 1px solid #ccc;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      color: #999;
     }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
     .text {
       flex: 1;
       text-align: center;
     }
+
     .title {
       font-weight: bold;
       font-size: 18px;
     }
+
     .subtitle {
       font-weight: bold;
       font-size: 16px;
       margin-bottom: 8px;
     }
+
     .info {
       font-size: 14px;
     }
+
+    .content {
+      margin-top: 18px;
+    }
+
+    .section-body {
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    /* Preserve common Quill formatting in generated PDF output */
+    .section-body p,
+    .section-body h1,
+    .section-body h2,
+    .section-body h3,
+    .section-body h4,
+    .section-body h5,
+    .section-body h6 {
+      margin: 0 0 8px;
+    }
+
+    .section-body p:last-child,
+    .section-body h1:last-child,
+    .section-body h2:last-child,
+    .section-body h3:last-child,
+    .section-body h4:last-child,
+    .section-body h5:last-child,
+    .section-body h6:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-body h1 {
+      font-size: 2em;
+      font-weight: 700;
+    }
+
+    .section-body h2 {
+      font-size: 1.5em;
+      font-weight: 700;
+    }
+
+    .section-body h3 {
+      font-size: 1.17em;
+      font-weight: 700;
+    }
+
+    .section-body h4,
+    .section-body h5,
+    .section-body h6 {
+      font-size: 1em;
+      font-weight: 700;
+    }
+
+    .section-body ul,
+    .section-body ol {
+      margin: 0 0 8px;
+      padding-left: 22px;
+    }
+
+    .section-body li {
+      margin: 2px 0;
+    }
+
+    .section-body .ql-align-center,
+    .section-body p.ql-align-center,
+    .section-body h1.ql-align-center,
+    .section-body h2.ql-align-center,
+    .section-body h3.ql-align-center {
+      text-align: center;
+    }
+
+    .section-body .ql-align-right,
+    .section-body p.ql-align-right,
+    .section-body h1.ql-align-right,
+    .section-body h2.ql-align-right,
+    .section-body h3.ql-align-right {
+      text-align: right;
+    }
+
+    .section-body .ql-align-justify,
+    .section-body p.ql-align-justify,
+    .section-body h1.ql-align-justify,
+    .section-body h2.ql-align-justify,
+    .section-body h3.ql-align-justify {
+      text-align: justify;
+    }
+
+    .section-body strong,
+    .section-body b {
+      font-weight: 700;
+    }
+
+    .section-body em,
+    .section-body i {
+      font-style: italic;
+    }
+
+    .section-body .ql-font-serif {
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .section-body .ql-font-monospace {
+      font-family: Monaco, "Courier New", monospace;
+    }
+
+    .section-body .ql-indent-1 {
+      padding-left: 3em;
+    }
+
+    .section-body .ql-indent-2 {
+      padding-left: 6em;
+    }
+
+    .section-body .ql-indent-3 {
+      padding-left: 9em;
+    }
+
+    .section-body .ql-indent-4 {
+      padding-left: 12em;
+    }
+
+    .section-body .ql-indent-5 {
+      padding-left: 15em;
+    }
+
+    .section-body .ql-indent-6 {
+      padding-left: 18em;
+    }
+
+    .section-body .ql-indent-7 {
+      padding-left: 21em;
+    }
+
+    .section-body .ql-indent-8 {
+      padding-left: 24em;
+    }
+
+    /* Quill can output list type in data-list attributes (root.innerHTML format) */
+    .section-body li[data-list="bullet"],
+    .section-body li[data-list="ordered"] {
+      display: list-item;
+      margin-left: 1.5em;
+    }
+
+    .section-body li[data-list="bullet"] {
+      list-style-type: disc;
+    }
+
+    .section-body li[data-list="ordered"] {
+      list-style-type: decimal;
+    }
+
+    /* Quill size classes */
+    .section-body .ql-size-small {
+      font-size: 0.75em;
+    }
+
+    .section-body .ql-size-large {
+      font-size: 1.5em;
+    }
+
+    .section-body .ql-size-huge {
+      font-size: 2.5em;
+    }
+
+    body {
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      background-color: white;
+      /* Penting agar PDF tidak transparan */
+      color: black;
+    }
   </style>
 </head>
+
 <body>
 
-<div class="header">
-  <div class="logo">
-    LOGO
+  <div class="header">
+    <div class="logo">
+      {{logo_markup}}
+    </div>
+
+    <div class="text">
+      <div class="title">PEMERINTAH PROVINSI NUSA TENGGARA BARAT</div>
+      <div class="subtitle">BADAN PERENCANAAN PEMBANGUNAN DAERAH</div>
+      <div class="info">
+        Alamat : Jln. Flamboyan No. 2 Mataram Kode Pos 83126, Telepon/Faksimile (0370) 631581
+      </div>
+      <div class="info">
+        Email : bappeda@ntbprov.go.id &nbsp;&nbsp; Website : bappeda.ntbprov.go.id
+      </div>
+    </div>
   </div>
 
-  <div class="text">
-    <div class="title">PEMERINTAH PROVINSI NUSA TENGGARA BARAT</div>
-    <div class="subtitle">BADAN PERENCANAAN PEMBANGUNAN DAERAH</div>
-    <div class="info">
-      Alamat : Jln. Flamboyan No. 2 Mataram Kode Pos 83126, Telepon/Faksimile (0370) 631581
-    </div>
-    <div class="info">
-      Email : bappeda@ntbprov.go.id &nbsp;&nbsp; Website : bappeda.ntbprov.go.id
-    </div>
+  <div class="content">
+    <div class="section-body">{{description}}</div>
   </div>
-</div>
 
 </body>
+
 </html>

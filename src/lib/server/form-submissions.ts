@@ -1,4 +1,5 @@
 import {
+	findFormSubmissionRowById,
 	insertFormSubmission,
 	listFormSubmissionRowsMissingPdf,
 	listFormSubmissionRows,
@@ -122,5 +123,15 @@ export async function listFormSubmissionsMissingPdf(
 ): Promise<FormSubmissionRecord[]> {
 	const rows = await listFormSubmissionRowsMissingPdf(submissionType);
 
-	return rows.filter((row) => row.pdfLink == null).map(toSubmissionRecord);
+	return rows.map(toSubmissionRecord);
+}
+
+export async function findFormSubmissionById(id: number): Promise<FormSubmissionRecord | null> {
+	const row = await findFormSubmissionRowById(id);
+
+	if (!row) {
+		return null;
+	}
+
+	return toSubmissionRecord(row);
 }

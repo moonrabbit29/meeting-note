@@ -28,6 +28,9 @@
 
 	let backfillMessage = $state<string | null>(null);
 	let isBackfilling = $state(false);
+	let expandedDescriptions = $state<Record<number, boolean>>({});
+	let regeneratingBySubmissionId = $state<Record<number, boolean>>({});
+	const DESCRIPTION_PREVIEW_LENGTH = 100;
 
 	function formatDate(value: string): string {
 		const date = new Date(value.replace(' ', 'T'));
@@ -58,6 +61,63 @@
 
 	function getFieldEntries(fields: SubmissionRecord['fields']): Array<[string, string | string[]]> {
 		return Object.entries(fields) as Array<[string, string | string[]]>;
+	}
+
+	function stripHtml(value: string): string {
+		return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+	}
+
+	function truncateText(value: string, maxLength: number): string {
+		if (value.length <= maxLength) {
+			return value;
+		}
+
+		return `${value.slice(0, maxLength).trimEnd()}...`;
+	}
+
+	function isDescriptionExpanded(submissionId: number): boolean {
+		return !!expandedDescriptions[submissionId];
+	}
+
+	function toggleDescription(submissionId: number): void {
+		expandedDescriptions = {
+			...expandedDescriptions,
+			[submissionId]: !expandedDescriptions[submissionId]
+		};
+	}
+
+	function isRegenerating(submissionId: number): boolean {
+		return !!regeneratingBySubmissionId[submissionId];
+	}
+
+	async function regeneratePdf(submissionId: number): Promise<void> {
+		backfillMessage = null;
+		regeneratingBySubmissionId = {
+			...regeneratingBySubmissionId,
+			[submissionId]: true
+		};
+
+		try {
+			const response = await fetch(
+				`/api/form-submission?action=regenerate-pdf&submissionId=${submissionId}`,
+				{ method: 'POST' }
+			);
+			const result = (await response.json()) as { message?: string; error?: string };
+
+			if (!response.ok) {
+				throw new Error(result.error ?? 'Gagal regenerate PDF');
+			}
+
+			backfillMessage = `PDF laporan #${submissionId} berhasil diregenerate.`;
+			await invalidateAll();
+		} catch (error) {
+			backfillMessage = error instanceof Error ? error.message : 'Terjadi kesalahan';
+		} finally {
+			regeneratingBySubmissionId = {
+				...regeneratingBySubmissionId,
+				[submissionId]: false
+			};
+		}
 	}
 
 	async function triggerPdfBackfill(): Promise<void> {
@@ -145,9 +205,31 @@
 
 							<div class="meta-grid">
 								{#each getFieldEntries(submission.fields) as [key, value]}
-									<div class="meta-card">
+									<div class="meta-card" class:meta-card-wide={key === 'deskripsiMeeting'}>
 										<span>{toLabel(key)}</span>
-										<strong>{formatFieldValue(value)}</strong>
+										{#if key === 'deskripsiMeeting'}
+											{@const richHtml = formatFieldValue(value)}
+											{@const plainText = stripHtml(richHtml)}
+											{@const needsToggle = plainText.length > DESCRIPTION_PREVIEW_LENGTH}
+
+											{#if isDescriptionExpanded(submission.id) || !needsToggle}
+												<div class="rich-field">{@html richHtml}</div>
+											{:else}
+												<p class="description-preview">{truncateText(plainText, DESCRIPTION_PREVIEW_LENGTH)}</p>
+											{/if}
+
+											{#if needsToggle}
+												<button
+													type="button"
+													class="expand-button"
+													onclick={() => toggleDescription(submission.id)}
+												>
+													{isDescriptionExpanded(submission.id) ? 'Tampilkan ringkasan' : 'Lihat selengkapnya'}
+												</button>
+											{/if}
+										{:else}
+											<strong>{formatFieldValue(value)}</strong>
+										{/if}
 									</div>
 								{/each}
 							</div>
@@ -169,9 +251,33 @@
 								<div class="attachment-group">
 									<p>Laporan PDF</p>
 									<div class="attachment-list">
-										<a class="attachment-link" href={submission.pdfLink} target="_blank" rel="noreferrer">
-											<span>Lihat PDF</span>
-										</a>
+										<div class="pdf-actions">
+											<a class="attachment-link" href={submission.pdfLink} target="_blank" rel="noreferrer">
+												<span>Lihat PDF</span>
+											</a>
+											<button
+												type="button"
+												class="regenerate-button"
+												disabled={isRegenerating(submission.id)}
+												onclick={() => regeneratePdf(submission.id)}
+											>
+												{isRegenerating(submission.id) ? 'Regenerating...' : 'Regenerate PDF'}
+											</button>
+										</div>
+									</div>
+								</div>
+							{:else}
+								<div class="attachment-group">
+									<p>Laporan PDF</p>
+									<div class="attachment-list">
+										<button
+											type="button"
+											class="regenerate-button"
+											disabled={isRegenerating(submission.id)}
+											onclick={() => regeneratePdf(submission.id)}
+										>
+											{isRegenerating(submission.id) ? 'Regenerating...' : 'Generate PDF'}
+										</button>
 									</div>
 								</div>
 							{/if}
@@ -358,6 +464,10 @@
 		gap: 0.35rem;
 	}
 
+	.meta-card-wide {
+		grid-column: 1 / -1;
+	}
+
 	.meta-card span,
 	.attachment-group p,
 	.attachment-link small {
@@ -371,6 +481,39 @@
 	.meta-card strong {
 		font-size: 1rem;
 		line-height: 1.4;
+	}
+
+	.rich-field {
+		font-size: 1rem;
+		line-height: 1.5;
+	}
+
+	.description-preview {
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.5;
+	}
+
+	.expand-button {
+		justify-self: start;
+		border: 0;
+		border-radius: 999px;
+		padding: 0.45rem 0.8rem;
+		font: inherit;
+		font-size: 0.86rem;
+		cursor: pointer;
+		background: #e7edf0;
+		color: #17384f;
+	}
+
+	.rich-field :global(p) {
+		margin: 0;
+	}
+
+	.rich-field :global(ul),
+	.rich-field :global(ol) {
+		margin: 0;
+		padding-left: 1.2rem;
 	}
 
 	.attachment-group {
@@ -400,6 +543,30 @@
 		background: #e8f1f4;
 		color: #17384f;
 		text-decoration: none;
+	}
+
+	.pdf-actions {
+		display: grid;
+		gap: 0.75rem;
+		margin-top: 0.25rem;
+	}
+
+	.regenerate-button {
+		margin-top: 1%;
+		justify-self: start;
+		border: 0;
+		border-radius: 999px;
+		padding: 0.65rem 1rem;
+		font: inherit;
+		cursor: pointer;
+		background: linear-gradient(135deg, #f0c330, #e1aa1f);
+		color: #3e260a;
+		box-shadow: 0 6px 16px rgba(225, 170, 31, 0.28);
+	}
+
+	.regenerate-button:disabled {
+		opacity: 0.7;
+		cursor: wait;
 	}
 
 	@media (max-width: 720px) {

@@ -10,6 +10,14 @@ import { updateFormSubmissionPdfLink } from '$lib/server/repositories/form-submi
 import { generatePdf } from './generatedPdf';
 
 const generatedPdfDirectory = resolve(process.cwd(), 'static', 'generated-pdfs', 'meeting-reports');
+const reportLogoPath = resolve(
+	process.cwd(),
+	'src',
+	'lib',
+	'assets',
+	'form_images',
+	'Nusa Tenggara barat.svg'
+);
 
 let pdfDirectoryPromise: Promise<void> | undefined;
 
@@ -20,6 +28,19 @@ function escapeHtml(value: string): string {
 		.replaceAll('>', '&gt;')
 		.replaceAll('"', '&quot;')
 		.replaceAll("'", '&#39;');
+}
+
+function normalizeQuillHtml(html: string): string {
+	// Already has proper list wrappers (from getSemanticHTML) — leave as-is.
+	if (/<[uo]l[\s>]/i.test(html)) {
+		return html;
+	}
+
+	// Quill's root.innerHTML produces flat <li data-list="..."> without <ul>/<ol>.
+	// Group consecutive items by type into proper list containers.
+	return html
+		.replace(/(<li\s+data-list="bullet">.*?<\/li>\s*)+/gs, '<ul>$&</ul>')
+		.replace(/(<li\s+data-list="ordered">.*?<\/li>\s*)+/gs, '<ol>$&</ol>');
 }
 
 function readField(fields: Record<string, string | string[]>, key: string): string {
@@ -80,6 +101,13 @@ async function buildPhotoMarkup(submission: FormSubmissionRecord): Promise<strin
 	return tags.join('');
 }
 
+async function buildLogoMarkup(): Promise<string> {
+	const buffer = await readFile(reportLogoPath);
+	const base64 = buffer.toString('base64');
+
+	return `<img src="data:image/svg+xml;base64,${base64}" alt="Logo Provinsi Nusa Tenggara Barat" />`;
+}
+
 function buildDescription(submission: FormSubmissionRecord): string {
 	const status = readField(submission.fields, 'melaksanakanMeeting');
 
@@ -93,14 +121,23 @@ function buildDescription(submission: FormSubmissionRecord): string {
 	return alasanLainnya || alasanTidakMeeting || '-';
 }
 
-function buildTemplateData(submission: FormSubmissionRecord, photos: string): Record<string, string> {
+function buildTemplateData(
+	submission: FormSubmissionRecord,
+	photos: string,
+	logoMarkup: string
+): Record<string, string> {
+	const status = readField(submission.fields, 'melaksanakanMeeting');
+	const description = buildDescription(submission);
+	const descriptionMarkup = status === 'Ya' ? normalizeQuillHtml(description) : escapeHtml(description);
+
 	return {
+		logo_markup: logoMarkup,
 		employee_name: escapeHtml(readField(submission.fields, 'namaPegawai') || '-'),
 		employee_id: escapeHtml(readField(submission.fields, 'nomorPegawaian') || '-'),
 		meeting_date: escapeHtml(formatDisplayDate(readField(submission.fields, 'tanggalMeeting'))),
 		meeting_title: escapeHtml(readField(submission.fields, 'judulMeeting') || '-'),
 		meeting_status: escapeHtml(readField(submission.fields, 'melaksanakanMeeting') || '-'),
-		description: escapeHtml(buildDescription(submission)),
+		description: descriptionMarkup,
 		photos
 	};
 }
@@ -109,7 +146,8 @@ export async function generateMeetingReportPdf(submission: FormSubmissionRecord)
 	await ensurePdfDirectory();
 
 	const photos = await buildPhotoMarkup(submission);
-	const templateData = buildTemplateData(submission, photos);
+	const logoMarkup = await buildLogoMarkup();
+	const templateData = buildTemplateData(submission, photos, logoMarkup);
 	const pdfBuffer = await generatePdf(templateData, 'laporan.html');
 	const outputFileName = `meeting-report-${submission.id}.pdf`;
 	const outputPath = resolve(generatedPdfDirectory, outputFileName);

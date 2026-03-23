@@ -3,7 +3,8 @@ import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 import {
 	backfillMeetingPdfReports,
 	createMeetingFormSubmission,
-	listMeetingFormSubmissions
+	listMeetingFormSubmissions,
+	regenerateMeetingPdfReport
 } from '$lib/server/meeting-form-submissions';
 
 export const GET: RequestHandler = async () => {
@@ -24,6 +25,27 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 		);
 	}
 
+	if (action === 'regenerate-pdf') {
+		const submissionIdRaw = new URL(request.url).searchParams.get('submissionId');
+		const submissionId = Number(submissionIdRaw);
+
+		if (!Number.isInteger(submissionId) || submissionId <= 0) {
+			return json({ error: 'submissionId must be a positive integer' }, { status: 400 });
+		}
+
+		try {
+			const pdfLink = await regenerateMeetingPdfReport(submissionId);
+
+			return json({ message: 'PDF regenerated successfully', pdfLink });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unable to regenerate PDF';
+			const status = message.includes('not found') ? 404 : 500;
+			const clientMessage = status === 500 ? 'Unable to regenerate PDF' : message;
+
+			return json({ error: clientMessage }, { status });
+		}
+	}
+
 	const contentType = request.headers.get('content-type') ?? '';
 	const acceptsFormData =
 		contentType.includes('multipart/form-data') ||
@@ -42,14 +64,25 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 		}
 
 		const formData = await request.formData();
-		const submission = await createMeetingFormSubmission(formData, locals.account.id);
+		const eventIdRaw = formData.get('eventId');
+		const eventId =
+			typeof eventIdRaw === 'string' && eventIdRaw.trim().length > 0
+				? Number(eventIdRaw)
+				: undefined;
+
+		if (eventId !== undefined && (!Number.isInteger(eventId) || eventId <= 0)) {
+			return json({ error: 'eventId must be a positive integer' }, { status: 400 });
+		}
+
+		const submission = await createMeetingFormSubmission(formData, locals.account.id, eventId);
 
 		return json({ submission }, { status: 201 });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Unable to store meeting submission';
 		const status =
 			message.includes('wajib') || message.includes('Hanya file gambar') ? 400 : 500;
+		const clientMessage = status === 500 ? 'Unable to store meeting submission' : message;
 
-		return json({ error: message }, { status });
+		return json({ error: clientMessage }, { status });
 	}
 };

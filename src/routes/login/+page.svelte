@@ -61,7 +61,7 @@
 				persistSession(result.session.role, result.session.employeeId);
 			}
 
-			await goto('/list-laporan');
+			await goto('/calendar');
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat login';
 		} finally {

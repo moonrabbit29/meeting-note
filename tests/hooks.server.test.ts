@@ -69,6 +69,23 @@ describe('hooks.server', () => {
 		).rejects.toMatchObject({ status: 303, location: '/login' });
 	});
 
+	it('treats calendar as a protected page', async () => {
+		readAuthenticatedAccount.mockResolvedValueOnce(null);
+		const { handle } = await import('../src/hooks.server');
+
+		await expect(
+			handle({
+				event: {
+					url: new URL('http://localhost/calendar'),
+					request: new Request('http://localhost/calendar'),
+					cookies: { delete: vi.fn() },
+					locals: {}
+				},
+				resolve: vi.fn()
+			} as never)
+		).rejects.toMatchObject({ status: 303, location: '/login' });
+	});
+
 	it('allows protected routes for authenticated users', async () => {
 		readAuthenticatedAccount.mockResolvedValueOnce({
 			id: 1,
