@@ -8,6 +8,8 @@
 		"db:migrate": "tsx scripts/migrate.ts",
 		"dev": "vite dev",
 		"build": "vite build",
+		"start": "npm run build && npm run server:start",
+		"server:start": "tsx server/index.ts",
 		"pdf:backfill": "tsx scripts/pdf-backfill.ts",
 		"preview": "vite preview",
 		"server:dev": "tsx server/index.ts",

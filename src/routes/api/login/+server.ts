@@ -20,8 +20,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			return json({ error: error.message }, { status: error.status });
 		}
 
-		const message = error instanceof Error ? error.message : 'Unable to log in';
-
-		return json({ error: message }, { status: 500 });
+		console.error(error);
+		return json({ error: 'Unable to log in' }, { status: 500 });
 	}
 };

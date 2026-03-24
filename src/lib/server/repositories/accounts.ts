@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '$lib/server/db';
 import { accounts, type AccountRole } from '$lib/server/schema/accounts';
@@ -40,8 +40,12 @@ export function findAccountById(id: number): Promise<AccountRow | undefined> {
 		.then(([account]) => account);
 }
 
-export function countOwnerAccounts(): Promise<number> {
-	return db.$count(accounts, eq(accounts.isOwner, true));
+export async function countOwnerAccounts(): Promise<number> {
+	const [result] = await db
+		.select({ count: count() })
+		.from(accounts)
+		.where(eq(accounts.isOwner, true));
+	return result?.count ?? 0;
 }
 
 export function listAccountRows(): Promise<AccountRow[]> {

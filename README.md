@@ -289,6 +289,8 @@ Use the local URL shown by Vite, then bootstrap the owner account if the databas
 ```sh
 npm run dev
 npm run build
+npm run start
+npm run server:start
 npm run preview
 npm run check
 npm run check:watch
@@ -302,6 +304,8 @@ npm run pdf:backfill
 
 - `npm run dev` is the normal development workflow.
 - [server/index.ts](server/index.ts) is a standalone Express wrapper around the built SvelteKit handler and is mainly relevant after build/deployment.
+- `npm run server:start` runs that Express wrapper (expects the app to be built first).
+- `npm run start` builds the app and then runs the Express wrapper in one command.
 
 ## Testing
 
