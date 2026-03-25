@@ -128,12 +128,32 @@ function parseCookies(cookieHeader: string | null): Map<string, string> {
 	return cookies;
 }
 
+function shouldUseSecureAuthCookie(): boolean {
+	const configuredValue = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+
+	if (configuredValue === 'true' || configuredValue === '1') {
+		return true;
+	}
+
+	if (configuredValue === 'false' || configuredValue === '0') {
+		return false;
+	}
+
+	const origin = process.env.ORIGIN?.trim().toLowerCase();
+
+	if (origin) {
+		return origin.startsWith('https://');
+	}
+
+	return process.env.NODE_ENV === 'production';
+}
+
 function getBaseAuthCookieOptions(): Parameters<Cookies['set']>[2] {
 	return {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'lax',
-		secure: process.env.NODE_ENV === 'production'
+		secure: shouldUseSecureAuthCookie()
 	};
 }
 
