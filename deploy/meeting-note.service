@@ -1,0 +1,26 @@
+[Unit]
+Description=Meeting Note SvelteKit App
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/root/meeting-note
+Environment="NODE_ENV=production"
+Environment="ORIGIN=http://103.146.203.218"
+Environment="PORT=3000"
+
+# Start command
+ExecStart=/usr/bin/node /root/meeting-note/build/server/index.js
+
+# Restart on crash
+Restart=on-failure
+RestartSec=10s
+
+# Log output
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meeting-note
+
+[Install]
+WantedBy=multi-user.target
