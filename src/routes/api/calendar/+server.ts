@@ -1,5 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
+import { logApiError, mapApiError } from '$lib/server/api-errors';
 import {
 	cancelPlannedCalendarEvent,
 	createPlannedCalendarEvent,
@@ -67,21 +68,21 @@ function parseActionData(formData: FormData): ActionData {
 }
 
 function toApiError(error: unknown): { status: number; message: string } {
-	const message = error instanceof Error ? error.message : 'Internal server error';
-
-	if (message.includes('not found')) {
-		return { status: 404, message };
-	}
-
-	if (
-		message.includes('required') ||
-		message.includes('must be') ||
-		message.includes('Only planned')
-	) {
-		return { status: 400, message };
-	}
-
-	return { status: 500, message };
+	return mapApiError(error, 'Unable to process calendar request', [
+		{
+			status: 404,
+			clientMessage: 'Calendar event not found',
+			test: (message) => message.toLowerCase().includes('not found')
+		},
+		{
+			status: 400,
+			clientMessage: 'Invalid calendar request payload',
+			test: (message) =>
+				message.includes('required') ||
+				message.includes('must be') ||
+				message.includes('Only planned')
+		}
+	]);
 }
 
 export const GET: RequestHandler = async ({ request }) => {
@@ -121,13 +122,18 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		return json({ events });
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Unable to load calendar events';
+		const mappedError = mapApiError(error, 'Unable to load calendar events');
 		debugCalendarApi(requestId, 'get.error', {
 			durationMs: Date.now() - startAt,
 			error: safeErrorMessage(error)
 		});
+		logApiError('api.calendar.get', error, {
+			requestId,
+			status: mappedError.status,
+			durationMs: Date.now() - startAt
+		});
 
-		return json({ error: message }, { status: 500 });
+		return json({ error: mappedError.message }, { status: mappedError.status });
 	}
 };
 
@@ -182,6 +188,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				durationMs: Date.now() - startAt,
 				error: safeErrorMessage(error)
 			});
+			logApiError('api.calendar.post.createSpontaneousReport', error, {
+				requestId,
+				status: apiError.status,
+				action,
+				durationMs: Date.now() - startAt
+			});
 
 			return json({ error: apiError.message }, { status: apiError.status });
 		}
@@ -219,6 +231,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				durationMs: Date.now() - startAt,
 				error: safeErrorMessage(error)
 			});
+			logApiError('api.calendar.post.createPlannedEvent', error, {
+				requestId,
+				status: apiError.status,
+				action,
+				durationMs: Date.now() - startAt
+			});
 
 			return json({ error: apiError.message }, { status: apiError.status });
 		}
@@ -244,6 +262,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: apiError.status,
 				durationMs: Date.now() - startAt,
 				error: safeErrorMessage(error)
+			});
+			logApiError('api.calendar.post.updatePlannedEvent', error, {
+				requestId,
+				status: apiError.status,
+				action,
+				durationMs: Date.now() - startAt
 			});
 
 			return json({ error: apiError.message }, { status: apiError.status });
@@ -274,6 +298,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: apiError.status,
 				durationMs: Date.now() - startAt,
 				error: safeErrorMessage(error)
+			});
+			logApiError('api.calendar.post.cancelEvent', error, {
+				requestId,
+				status: apiError.status,
+				action,
+				durationMs: Date.now() - startAt
 			});
 
 			return json({ error: apiError.message }, { status: apiError.status });

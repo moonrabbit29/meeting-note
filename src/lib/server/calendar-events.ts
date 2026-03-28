@@ -6,6 +6,7 @@ import {
 	updateCalendarEventRow,
 	type CalendarEventRow
 } from '$lib/server/repositories/calendar-events';
+import { queueMeetingReportPdfGeneration } from '$lib/server/pdf/meetingReportPdf';
 
 type ReportSummary = {
 	id: number;
@@ -128,6 +129,8 @@ export async function createSpontaneousMeetingWithCalendarEvent(input: {
 		formSubmissionId: submission.id,
 		isCancelled: false
 	});
+
+	queueMeetingReportPdfGeneration(submission);
 
 	return {
 		calendarEventId: event.id,

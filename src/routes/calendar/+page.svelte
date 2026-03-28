@@ -270,6 +270,12 @@
 							<input type="hidden" name="eventId" value={editingEvent.id} />
 							<button type="submit" class="danger">Mark as Cancelled</button>
 						</form>
+
+						<div class="sidebar-divider"></div>
+						<p class="submit-note">Sudah selesai meeting? Klik di bawah untuk mengisi laporan.</p>
+						<a class="btn-submit-report" href="/form-laporan?eventId={editingEvent.id}">
+							Submit Laporan Meeting →
+						</a>
 					{:else if viewingReportEvent}
 						{#if viewingReportEvent.reportSummary}
 							<p class="sidebar-kicker">Meeting Terpilih</p>
@@ -469,6 +475,34 @@
 		background: #b91c1c;
 		color: #fff;
 		margin-top: 0.7rem;
+	}
+
+	.sidebar-divider {
+		border: none;
+		border-top: 1px solid #e2e8f0;
+		margin: 1rem 0;
+	}
+
+	.submit-note {
+		margin: 0 0 0.6rem;
+		font-size: 0.82rem;
+		color: #6b7280;
+	}
+
+	.btn-submit-report {
+		display: block;
+		text-align: center;
+		padding: 0.6rem 0.95rem;
+		border-radius: 999px;
+		background: #059669;
+		color: #fff;
+		text-decoration: none;
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.btn-submit-report:hover {
+		background: #047857;
 	}
 
 	.sidebar {

@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
+import { logApiError, mapApiError } from '$lib/server/api-errors';
 import {
-	AuthApiError,
 	createManagedAccount,
 	requireSystemAdministratorAccount
 } from '$lib/server/auth';
@@ -14,12 +14,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json({ account }, { status: 201 });
 	} catch (error) {
-		if (error instanceof AuthApiError) {
-			return json({ error: error.message }, { status: error.status });
-		}
-
-		const message = error instanceof Error ? error.message : 'Unable to create account';
-
-		return json({ error: message }, { status: 500 });
+		const mappedError = mapApiError(error, 'Unable to create account');
+		logApiError('api.signup.post', error);
+		return json({ error: mappedError.message }, { status: mappedError.status });
 	}
 };

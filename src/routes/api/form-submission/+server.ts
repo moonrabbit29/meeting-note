@@ -1,5 +1,6 @@
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 
+import { logApiError, mapApiError } from '$lib/server/api-errors';
 import {
 	backfillMeetingPdfReports,
 	createMeetingFormSubmission,
@@ -8,9 +9,15 @@ import {
 } from '$lib/server/meeting-form-submissions';
 
 export const GET: RequestHandler = async () => {
-	const submissions = await listMeetingFormSubmissions();
+	try {
+		const submissions = await listMeetingFormSubmissions();
 
-	return json({ submissions });
+		return json({ submissions });
+	} catch (error) {
+		const mappedError = mapApiError(error, 'Unable to load meeting submissions');
+		logApiError('api.form-submission.get', error);
+		return json({ error: mappedError.message }, { status: mappedError.status });
+	}
 };
 
 export const POST: RequestHandler = async ({ request, locals }: RequestEvent) => {
@@ -38,11 +45,19 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 
 			return json({ message: 'PDF regenerated successfully', pdfLink });
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unable to regenerate PDF';
-			const status = message.includes('not found') ? 404 : 500;
-			const clientMessage = status === 500 ? 'Unable to regenerate PDF' : message;
+			const mappedError = mapApiError(error, 'Unable to regenerate PDF', [
+				{
+					status: 404,
+					clientMessage: 'Meeting submission not found',
+					test: (message) => message.toLowerCase().includes('not found')
+				}
+			]);
 
-			return json({ error: clientMessage }, { status });
+			logApiError('api.form-submission.regenerate-pdf', error, {
+				submissionId,
+				status: mappedError.status
+			});
+			return json({ error: mappedError.message }, { status: mappedError.status });
 		}
 	}
 
@@ -78,11 +93,20 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 
 		return json({ submission }, { status: 201 });
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Unable to store meeting submission';
-		const status =
-			message.includes('wajib') || message.includes('Hanya file gambar') ? 400 : 500;
-		const clientMessage = status === 500 ? 'Unable to store meeting submission' : message;
+		const mappedError = mapApiError(error, 'Unable to store meeting submission', [
+			{
+				status: 400,
+				clientMessage: 'Invalid meeting submission data',
+				test: (message) =>
+					message.includes('wajib') || message.includes('Hanya file gambar')
+			}
+		]);
 
-		return json({ error: clientMessage }, { status });
+		logApiError('api.form-submission.post', error, {
+			eventId,
+			actorId: locals.account?.id,
+			status: mappedError.status
+		});
+		return json({ error: mappedError.message }, { status: mappedError.status });
 	}
 };

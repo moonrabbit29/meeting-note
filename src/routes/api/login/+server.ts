@@ -1,6 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-import { AuthApiError, loginAccount, setAuthCookie } from '$lib/server/auth';
+import { logApiError, mapApiError } from '$lib/server/api-errors';
+import { loginAccount, setAuthCookie } from '$lib/server/auth';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
@@ -16,11 +17,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			}
 		});
 	} catch (error) {
-		if (error instanceof AuthApiError) {
-			return json({ error: error.message }, { status: error.status });
-		}
-
-		console.error(error);
-		return json({ error: 'Unable to log in' }, { status: 500 });
+		const mappedError = mapApiError(error, 'Unable to log in');
+		logApiError('api.login.post', error);
+		return json({ error: mappedError.message }, { status: mappedError.status });
 	}
 };

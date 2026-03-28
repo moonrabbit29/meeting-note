@@ -1,5 +1,6 @@
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 
+import { logApiError, mapApiError } from '$lib/server/api-errors';
 import { createFormSubmission } from '$lib/server/form-submissions';
 
 export const POST: RequestHandler = async ({ request }: RequestEvent) => {
@@ -21,9 +22,16 @@ export const POST: RequestHandler = async ({ request }: RequestEvent) => {
 
     return json({ submission }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to store form submission';
-    const status = message.startsWith('File') || message.startsWith('Form submission') ? 400 : 500;
+    const mappedError = mapApiError(error, 'Unable to store form submission', [
+      {
+        status: 400,
+        clientMessage: 'Invalid form submission payload',
+        test: (message) =>
+          message.startsWith('File') || message.startsWith('Form submission')
+      }
+    ]);
 
-    return json({ error: message }, { status });
+    logApiError('api.upload-form.post', error, { status: mappedError.status });
+    return json({ error: mappedError.message }, { status: mappedError.status });
   }
 };

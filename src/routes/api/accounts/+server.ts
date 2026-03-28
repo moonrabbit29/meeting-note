@@ -1,15 +1,12 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-import { AuthApiError, listManagedAccounts, requireOwnerAccount } from '$lib/server/auth';
+import { logApiError, mapApiError } from '$lib/server/api-errors';
+import { listManagedAccounts, requireOwnerAccount } from '$lib/server/auth';
 
 function toErrorResponse(error: unknown, fallbackMessage: string): Response {
-	if (error instanceof AuthApiError) {
-		return json({ error: error.message }, { status: error.status });
-	}
-
-	const message = error instanceof Error ? error.message : fallbackMessage;
-
-	return json({ error: message }, { status: 500 });
+	const mappedError = mapApiError(error, fallbackMessage);
+	logApiError('api.accounts.get', error);
+	return json({ error: mappedError.message }, { status: mappedError.status });
 }
 
 export const GET: RequestHandler = async ({ request }) => {

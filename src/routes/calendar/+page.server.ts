@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { fail } from '@sveltejs/kit';
 
+import { logApiError, mapApiError } from '$lib/server/api-errors';
+
 type ActionData = {
 	eventId: number;
 	title: string;
@@ -109,8 +111,10 @@ export const actions = {
 				eventId: result.eventId
 			};
 		} catch (error) {
+			const mappedError = mapApiError(error, 'Unable to create planned event');
+			logApiError('page.calendar.action.createPlannedEvent', error);
 			return fail(400, {
-				error: error instanceof Error ? error.message : 'Unable to create planned event'
+				error: mappedError.message
 			});
 		}
 	},
@@ -130,8 +134,10 @@ export const actions = {
 				formSubmissionId: result.formSubmissionId
 			};
 		} catch (error) {
+			const mappedError = mapApiError(error, 'Unable to create spontaneous report');
+			logApiError('page.calendar.action.createSpontaneousReport', error);
 			return fail(400, {
-				error: error instanceof Error ? error.message : 'Unable to create spontaneous report'
+				error: mappedError.message
 			});
 		}
 	},
@@ -147,8 +153,10 @@ export const actions = {
 				eventId: result.eventId ?? data.eventId
 			};
 		} catch (error) {
+			const mappedError = mapApiError(error, 'Unable to update planned event');
+			logApiError('page.calendar.action.updatePlannedEvent', error);
 			return fail(400, {
-				error: error instanceof Error ? error.message : 'Unable to update planned event'
+				error: mappedError.message
 			});
 		}
 	},
@@ -169,8 +177,10 @@ export const actions = {
 				eventId: result.eventId ?? eventId
 			};
 		} catch (error) {
+			const mappedError = mapApiError(error, 'Unable to cancel event');
+			logApiError('page.calendar.action.cancelEvent', error);
 			return fail(400, {
-				error: error instanceof Error ? error.message : 'Unable to cancel event'
+				error: mappedError.message
 			});
 		}
 	}

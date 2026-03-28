@@ -81,7 +81,19 @@ async function ensurePdfDirectory(): Promise<void> {
 
 async function toImageTag(publicPath: string, label: string): Promise<string> {
 	const absolutePath = resolve(process.cwd(), 'static', publicPath.replace(/^(\/)+/, ''));
-	const buffer = await readFile(absolutePath);
+	let buffer: Buffer;
+
+	try {
+		buffer = await readFile(absolutePath);
+	} catch (error) {
+		console.error('Failed to read submission image for PDF', {
+			publicPath,
+			absolutePath,
+			label,
+			error
+		});
+		throw error;
+	}
 	const extension = extname(absolutePath).slice(1).toLowerCase() || 'jpeg';
 	const mimeType = extension === 'jpg' ? 'image/jpeg' : `image/${extension}`;
 	const base64 = buffer.toString('base64');
@@ -102,7 +114,17 @@ async function buildPhotoMarkup(submission: FormSubmissionRecord): Promise<strin
 }
 
 async function buildLogoMarkup(): Promise<string> {
-	const buffer = await readFile(reportLogoPath);
+	let buffer: Buffer;
+
+	try {
+		buffer = await readFile(reportLogoPath);
+	} catch (error) {
+		console.error('Failed to read meeting report logo for PDF', {
+			reportLogoPath,
+			error
+		});
+		throw error;
+	}
 	const base64 = buffer.toString('base64');
 
 	return `<img src="data:image/svg+xml;base64,${base64}" alt="Logo Provinsi Nusa Tenggara Barat" />`;
@@ -143,20 +165,31 @@ function buildTemplateData(
 }
 
 export async function generateMeetingReportPdf(submission: FormSubmissionRecord): Promise<string> {
-	await ensurePdfDirectory();
-
-	const photos = await buildPhotoMarkup(submission);
-	const logoMarkup = await buildLogoMarkup();
-	const templateData = buildTemplateData(submission, photos, logoMarkup);
-	const pdfBuffer = await generatePdf(templateData, 'laporan.html');
 	const outputFileName = `meeting-report-${submission.id}.pdf`;
 	const outputPath = resolve(generatedPdfDirectory, outputFileName);
 	const publicPath = `/generated-pdfs/meeting-reports/${outputFileName}`;
 
-	await writeFile(outputPath, pdfBuffer);
-	await updateFormSubmissionPdfLink(submission.id, publicPath);
+	try {
+		await ensurePdfDirectory();
+		const photos = await buildPhotoMarkup(submission);
+		const logoMarkup = await buildLogoMarkup();
+		const templateData = buildTemplateData(submission, photos, logoMarkup);
+		const pdfBuffer = await generatePdf(templateData, 'laporan.html');
 
-	return publicPath;
+		await writeFile(outputPath, pdfBuffer);
+		await updateFormSubmissionPdfLink(submission.id, publicPath);
+
+		return publicPath;
+	} catch (error) {
+		console.error('Failed to generate meeting report PDF', {
+			submissionId: submission.id,
+			outputPath,
+			publicPath,
+			fileCount: submission.files.length,
+			error
+		});
+		throw error;
+	}
 }
 
 export function queueMeetingReportPdfGeneration(submission: FormSubmissionRecord): void {

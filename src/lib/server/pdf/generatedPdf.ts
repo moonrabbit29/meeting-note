@@ -7,16 +7,38 @@ export async function generatePdf(
   templateName = 'laporan.html'
 ): Promise<Uint8Array<ArrayBufferLike>> {
   const templatePath = resolve(process.cwd(), 'src/lib/server/pdf/templates', templateName);
-  let html = await readFile(templatePath, 'utf-8');
+  let html: string;
+
+  try {
+    html = await readFile(templatePath, 'utf-8');
+  } catch (error) {
+    console.error('Failed to load PDF template', {
+      templateName,
+      templatePath,
+      error
+    });
+    throw error;
+  }
 
  	for (const [key, value] of Object.entries(data)) {
     html = html.replaceAll(`{{${key}}}`, value);
   }
 
- 	const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  let browser;
+
+  try {
+    browser = await puppeteer.launch({
+    	headless: true,
+    	args: ['--no-sandbox', '--disable-setuid-sandbox']
+  	});
+  } catch (error) {
+    console.error('Failed to launch Puppeteer for PDF generation', {
+      templateName,
+      templatePath,
+      error
+    });
+    throw error;
+  }
 
  	try {
     const page = await browser.newPage();
@@ -26,6 +48,14 @@ export async function generatePdf(
       format: 'A4',
       printBackground: true
     });
+  } catch (error) {
+    console.error('Failed while rendering PDF in Puppeteer', {
+      templateName,
+      templatePath,
+      keyCount: Object.keys(data).length,
+      error
+    });
+    throw error;
   } finally {
     await browser.close();
   }
