@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { afterNavigate, goto } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import type { LayoutData } from './$types';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { children } = $props();
+	let { children, data }: { children: import('svelte').Snippet; data: LayoutData } = $props();
+	const isLoggedIn = $derived(Boolean((data as { account?: unknown }).account));
+	let wasLoggedIn = $state(false);
 
-	let isLoggedIn = $state(false);
 	const navItems = [
 		{ href: '/calendar', label: 'Kalender' },
 		{ href: '/list-laporan', label: 'Daftar Laporan' },
@@ -14,25 +16,37 @@
 		{ href: '/accounts', label: 'Akun' }
 	] as const;
 
-	function refreshAuthState(): void {
-		isLoggedIn = !!sessionStorage.getItem('meeting-note-role');
+	function clearClientAuthData(): void {
+		if (typeof window === 'undefined') {
+			return;
+		}
+
+		sessionStorage.removeItem('meeting-note-role');
+		sessionStorage.removeItem('meeting-note-employee-id');
 	}
-
-	onMount(() => {
-		refreshAuthState();
-	});
-
-	afterNavigate(() => {
-		refreshAuthState();
-	});
 
 	async function handleLogout(): Promise<void> {
 		await fetch('/api/logout', { method: 'POST' });
-		sessionStorage.removeItem('meeting-note-role');
-		sessionStorage.removeItem('meeting-note-employee-id');
-		isLoggedIn = false;
+		clearClientAuthData();
 		await goto('/login');
 	}
+
+	// Clear session data when auth expires or is revoked on server
+	onMount(() => {
+		wasLoggedIn = isLoggedIn;
+
+		return () => {
+			// Cleanup if needed
+		};
+	});
+
+	$effect(() => {
+		// If was logged in but now isn't, clear client auth data (session expired)
+		if (wasLoggedIn && !isLoggedIn) {
+			clearClientAuthData();
+		}
+		wasLoggedIn = isLoggedIn;
+	});
 </script>
 
 <svelte:head>
