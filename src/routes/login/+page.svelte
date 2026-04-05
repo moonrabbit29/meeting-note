@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 
 	type LoginForm = {
 		email: string;
@@ -61,6 +61,7 @@
 				persistSession(result.session.role, result.session.employeeId);
 			}
 
+			await invalidateAll();
 			await goto('/calendar');
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat login';

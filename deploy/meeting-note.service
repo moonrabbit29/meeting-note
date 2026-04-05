@@ -9,6 +9,8 @@ WorkingDirectory=/root/meeting-note
 Environment="NODE_ENV=production"
 Environment="ORIGIN=http://103.146.203.218"
 Environment="PORT=3000"
+Environment="DATABASE_URL=file:/root/meeting-note/data/meeting-note.db"
+Environment="TZ=Asia/Jakarta"
 
 # Start command
 ExecStart=/usr/bin/node /root/meeting-note/build/server/index.js

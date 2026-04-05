@@ -84,14 +84,20 @@ export const load: PageServerLoad = async ({ fetch }) => {
 			throw new Error('Invalid calendar response');
 		}
 
+		const now = new Date();
 		return {
 			events: body.events,
-			loadError: null
+			loadError: null,
+			serverNow: now.toLocaleString('id-ID', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: false }),
+			serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
 		};
 	} catch {
+		const now = new Date();
 		return {
 			events: [],
-			loadError: null
+			loadError: null,
+			serverNow: now.toLocaleString('id-ID', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: false }),
+			serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
 		};
 	}
 };

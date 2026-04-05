@@ -27,6 +27,8 @@
 		data: {
 			events: CalendarEventRow[];
 			loadError: string | null;
+			serverNow: string;
+			serverTimezone: string;
 		};
 	}>();
 
@@ -159,6 +161,10 @@
 </svelte:head>
 
 <div class="page-shell">
+	<div class="server-time-widget">
+		<span>Server time: <strong>{data.serverNow}</strong></span>
+		<span>Server timezone: <strong>{data.serverTimezone}</strong></span>
+	</div>
 	<section class="calendar-card">
 		<header class="header">
 			<div>
@@ -339,6 +345,19 @@
 
 	.page-shell {
 		padding: 1rem;
+	}
+
+	.server-time-widget {
+		max-width: 1200px;
+		margin: 0 auto 0.75rem;
+		background: #f0f4ff;
+		border: 1px solid #c7d2fe;
+		border-radius: 8px;
+		padding: 0.5rem 1rem;
+		font-size: 0.8rem;
+		color: #4338ca;
+		display: flex;
+		gap: 1.5rem;
 	}
 
 	.calendar-card {
