@@ -9,7 +9,8 @@ import { updateFormSubmissionPdfLink } from '$lib/server/repositories/form-submi
 
 import { generatePdf } from './generatedPdf';
 
-const generatedPdfDirectory = resolve(process.cwd(), 'static', 'generated-pdfs', 'meeting-reports');
+const staticRoot = process.env.PDF_STATIC_ROOT ?? 'static';
+const generatedPdfDirectory = resolve(process.cwd(), staticRoot, 'generated-pdfs', 'meeting-reports');
 const reportLogoPath = resolve(
 	process.cwd(),
 	'src',

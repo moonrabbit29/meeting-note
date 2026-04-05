@@ -17,7 +17,7 @@ type ActionData = {
 	endTime: string;
 };
 
-const calendarApiDebugEnabled = process.env.DEBUG_CALENDAR_API === '1';
+const calendarApiDebugEnabled = () => process.env.DEBUG_CALENDAR_API === '1';
 let calendarApiRequestSeq = 0;
 
 function nextRequestId(): string {
@@ -34,7 +34,7 @@ function debugCalendarApi(
 	stage: string,
 	meta: Record<string, string | number | boolean>
 ): void {
-	if (!calendarApiDebugEnabled) {
+	if (!calendarApiDebugEnabled()) {
 		return;
 	}
 
@@ -283,7 +283,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				throw new Error('eventId must be a positive integer');
 			}
 
-			await cancelPlannedCalendarEvent(eventId);
+			const cancelReason = formData.get('cancelReason');
+			await cancelPlannedCalendarEvent(eventId, typeof cancelReason === 'string' ? cancelReason : undefined);
 			debugCalendarApi(requestId, 'post.success', {
 				action,
 				eventId,

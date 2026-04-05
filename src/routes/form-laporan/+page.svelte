@@ -9,6 +9,7 @@ department -->
 
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
+    import { goto } from "$app/navigation";
 
     type CalendarEventPrefillResponse = {
         event?: {
@@ -314,6 +315,7 @@ department -->
                 "Data laporan meeting telah tersimpan.",
             );
             resetForm();
+            await goto('/calendar');
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : "Terjadi kesalahan";
