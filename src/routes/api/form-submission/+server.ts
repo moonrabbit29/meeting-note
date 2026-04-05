@@ -73,6 +73,8 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 		);
 	}
 
+	let eventId: number | undefined;
+
 	try {
 		if (!locals.account) {
 			return json({ error: 'Authentication required' }, { status: 401 });
@@ -80,7 +82,7 @@ export const POST: RequestHandler = async ({ request, locals }: RequestEvent) =>
 
 		const formData = await request.formData();
 		const eventIdRaw = formData.get('eventId');
-		const eventId =
+		eventId =
 			typeof eventIdRaw === 'string' && eventIdRaw.trim().length > 0
 				? Number(eventIdRaw)
 				: undefined;
